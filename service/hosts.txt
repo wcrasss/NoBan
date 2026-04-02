@@ -1,103 +1,71 @@
-# 4pda.to/forum/index.php?showforum=1192
 4pda.to
-
-# platform.activestate.com
+platform.activestate.com
 activestate.com
-
-# Some Photoshop AI tools (Harmonization and Generative Fill)
 adobe.io
-
-# app.ahrefs.com
+app.ahrefs.com
 ahrefs.com
-
-# gaming.amazon.com
+gaming.amazon.com
 amazon.com
-
-# login.amd.com
+login.amd.com
 amd.com
-
-# forum.ansible.com
+forum.ansible.com
 ansible.com
-
-# console.anthropic.com
+console.anthropic.com
 anthropic.com
-
-# itunes.apple.com/search
 apple.com
-
-# App installation from marketplace.atlassian.com
+marketplace.atlassian.com
 atlassian.com
-
-# w.atwiki.jp
+w.atwiki.jp
 atwiki.jp
-
-# i1.api.augmentcode.com
-# app.augmentcode.com
+i1.api.augmentcode.com
+app.augmentcode.com
 augmentcode.com
-
-# accounts.autodesk.com
-# dl.appstreaming.autodesk.com
-# efulfillment.autodesk.com
-# damassets.autodesk.net
+accounts.autodesk.com
+dl.appstreaming.autodesk.com
+efulfillment.autodesk.com
+damassets.autodesk.net
 autodesk.com
 autodesk.net
-
-# bits.avcdn.net
+bits.avcdn.net
 avcdn.net
-
-# repo.bacch.com
+repo.bacch.com
 bacch.com
-
-# eu.shop.battle.net/ru-ru/product/warcraft-1-remastered
+eu.shop.battle.net
 battle.net
-
-# bing.com/chat
+bing.com/chat
 bing.com
-
-# ai-chat.bsg.brave.com
+ai-chat.bsg.brave.com
 brave.com
-
-# game.brawlstarsgame.com blocks access to the game on mobile devices
+game.brawlstarsgame.com
 brawlstarsgame.com
-
-# login.broadcom.com
-# packages-prod.broadcom.com/tools/
+login.broadcom.com
+packages-prod.broadcom.com/tools/
 broadcom.com
-
-# forums.chaos.com
-# try.chaos.com
+forums.chaos.com
+try.chaos.com
 chaos.com
-
-# dashboard.chatfuel.com
+dashboard.chatfuel.com
 chatfuel.com
-
-# community.cisco.com
-# crosswork.cisco.com
-# id.cisco.com
-# secure-web.cisco.com
-# tools.cisco.com
+community.cisco.com
+crosswork.cisco.com
+id.cisco.com
+secure-web.cisco.com
+tools.cisco.com
 cisco.com
-
-# database.clamav.net
+database.clamav.net
 clamav.net
-
-# cxstudio.clarabridge.net
+cxstudio.clarabridge.net
 clarabridge.net
-
-# coral.cohere.com
-# dashboard.cohere.com
+coral.cohere.com
+dashboard.cohere.com
 cohere.com
-
-# www3.corsair.com
+www3.corsair.com
 corsair.com
-
-# app.deepsource.com
+app.deepsource.com
 deepsource.com
-
-# dl.dell.com
+dl.dell.com
 dell.com
-
-# afcs.dellcdn.com
+afcs.dellcdn.com
 dellcdn.com
 
 # artifacts.elastic.co
@@ -318,41 +286,30 @@ serif.com
 
 # radarr.servarr.com
 servarr.com
-
-# xcelerator.siemens.com
+xcelerator.siemens.com
 siemens.com
-
-# 3dwarehouse.sketchup.com
-# extensions.sketchup.com
+3dwarehouse.sketchup.com
+extensions.sketchup.com
 sketchup.com
-
-# community.sophos.com
-# intelix.sophos.com
+community.sophos.com
+intelix.sophos.com
 sophos.com
-
-# members.summerana.com
+members.summerana.com
 summerana.com
-
-# store.supercell.com
+store.supercell.com
 supercell.com
-
-# pkgs.tailscale.com
+pkgs.tailscale.com
 tailscale.com
-
-# account.templatemonster.com
+account.templatemonster.com
 templatemonster.com
-
-# app.terraform.io
+app.terraform.io
 terraform.io
-
-# api.themoviedb.org
+api.themoviedb.org
 themoviedb.org
-
-# images.tmdb.org
+images.tmdb.org
 tmdb.org
-
-# community.teamviewer.com
-# download.teamviewer.com
+community.teamviewer.com
+download.teamviewer.com
 teamviewer.com
 tiktok.com
 tiktokv.com
