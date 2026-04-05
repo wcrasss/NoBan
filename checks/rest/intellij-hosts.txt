@@ -1,0 +1,6 @@
+# IntelliJ IDEA / JetBrains bypass IPs
+45.155.204.190 datalore.jetbrains.com
+45.155.204.190 plugins.jetbrains.com
+45.155.204.190 download.jetbrains.com
+45.155.204.190 api.jetbrains.ai
+45.155.204.190 account.jetbrains.com
