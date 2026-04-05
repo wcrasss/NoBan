@@ -5,8 +5,8 @@ reg add "HKCU\Console" /v "FontFamily" /t REG_DWORD /d 54 /f > nul
 
 :: ═════╣ Устанавливаем UTF-8 ╠═════
 chcp 65001 > nul
-title NoBan service v6.0
-set "LOCAL_VERSION=6.0"
+title NoBan service v6.1
+set "LOCAL_VERSION=6.1"
 
 :: External commands
 if "%~1"=="status_noban" (
@@ -57,11 +57,14 @@ echo   [4] Переключить игровой фильтр [%GameFilterStatus
 echo   [5] Переключить ipset [%IPsetStatus%]
 echo   [6] Установить автозагрузку
 echo   [7] Убрать автозагрузку / Остановить NoBan
+echo   [8] Проверка работоспособности доменов
+echo   [9] Проверка доменов (Простая)    :: Test
+echo   [10] Профессиональная разблокировка
 echo   [0] Выход
 echo.
 echo  ╠═════════ NoBan v!LOCAL_VERSION! ═════════╣
 echo.
-set /p menu_choice=Введите выбор [0-7]:
+set /p menu_choice=Введите выбор [0-10]:
 
 if "%menu_choice%"=="1" goto service_status
 if "%menu_choice%"=="2" goto service_diagnostics
@@ -70,9 +73,121 @@ if "%menu_choice%"=="4" goto game_switch
 if "%menu_choice%"=="5" goto ipset_switch
 if "%menu_choice%"=="6" goto service_install
 if "%menu_choice%"=="7" goto service_remove
+if "%menu_choice%"=="8" goto service_check_domains
+if "%menu_choice%"=="9" goto service_autofind
+if "%menu_choice%"=="10" goto professional_unlock
 if "%menu_choice%"=="0" exit /b
 goto menu
 
+:: ═════╣ Автоопределение стратегии (проверка всех профилей из checks\bat) ╠═════
+:service_autofind
+cls
+
+set "PROFILES_DIR=%~dp0checks\bat"
+if not exist "%PROFILES_DIR%" (
+    call :PrintRed " [-] Папка 'checks\bat' не найдена."
+    pause
+    goto menu
+)
+
+:: Собираем список всех .bat файлов
+set "profile_count=0"
+for %%f in ("%PROFILES_DIR%\*.bat") do (
+    set /a profile_count+=1
+    set "profile_name_!profile_count!=%%~nxf"
+    set "profile_path_!profile_count!=%%f"
+)
+
+if %profile_count%==0 (
+    call :PrintRed " [-] В папке 'checks\bat' нет bat-файлов."
+    pause
+    goto menu
+)
+
+:: Останавливаем текущий обход, если он запущен
+tasklist /FI "IMAGENAME eq NoBan.exe" 2>nul | find /I "NoBan.exe" >nul
+if not errorlevel 1 (
+    call :PrintYellow " [i] Останавливаю текущий обход..."
+    taskkill /IM NoBan.exe /F >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+
+color 0F
+echo.
+echo  Профиль        Discord  YouTube  Google
+echo.
+echo ═════════════════════════════════════════════
+echo.
+
+:: Создаём временный файл для результатов
+set "result_file=%temp%\noban_autofind.txt"
+> "%result_file%" echo.
+
+:: Перебираем все профили
+for /l %%i in (1,1,%profile_count%) do (
+    set "profile=!profile_name_%%i!"
+    set "profile_path=!profile_path_%%i!"
+
+    :: Запускаем профиль (рабочая папка — корень NoBan)
+    pushd "%~dp0"
+    start "NoBan Test" /min cmd /c "!profile_path!"
+    popd
+    timeout /t 5 /nobreak >nul
+
+    :: Проверяем Discord
+    set "discord_ok=0"
+    curl -s -L -m 5 -o "%temp%\noban_discord.html" "https://discord.com" >nul 2>&1
+    if not errorlevel 1 (
+        findstr /i "discord" "%temp%\noban_discord.html" >nul
+        if not errorlevel 1 set "discord_ok=1"
+    )
+    del "%temp%\noban_discord.html" 2>nul
+
+    :: Проверяем YouTube
+    set "youtube_ok=0"
+    curl -s -L -m 5 -o "%temp%\noban_youtube.html" "https://youtube.com" >nul 2>&1
+    if not errorlevel 1 (
+        findstr /i "YouTube" "%temp%\noban_youtube.html" >nul
+        if not errorlevel 1 set "youtube_ok=1"
+    )
+    del "%temp%\noban_youtube.html" 2>nul
+
+    :: Проверяем Google
+    set "google_ok=0"
+    curl -s -L -m 5 -o "%temp%\noban_google.html" "https://google.com" >nul 2>&1
+    if not errorlevel 1 (
+        findstr /i "Google" "%temp%\noban_google.html" >nul
+        if not errorlevel 1 set "google_ok=1"
+    )
+    del "%temp%\noban_google.html" 2>nul
+
+    :: Останавливаем тестовый процесс
+    taskkill /IM NoBan.exe /F >nul 2>&1
+
+    :: Выводим строку результата
+    set "discord_str= - "
+    if !discord_ok!==1 set "discord_str= + "
+    set "youtube_str= - "
+    if !youtube_ok!==1 set "youtube_str= + "
+    set "google_str= - "
+    if !google_ok!==1 set "google_str= + "
+
+    echo  !profile!    !discord_str!      !youtube_str!     !google_str!
+    echo  !profile!;!discord_ok!;!youtube_ok!;!google_ok! >> "%result_file%"
+)
+
+echo.
+echo.
+echo  [+] - сервис доступен
+echo.
+echo  [-] - сервис недоступен
+echo.
+echo ═════════════════════════════════════════════
+echo.
+
+del "%result_file%" 2>nul
+pause
+goto menu
 
 :: TCP ENABLE ==========================
 :tcp_enable
@@ -98,10 +213,12 @@ echo:
 
 tasklist /FI "IMAGENAME eq NoBan.exe" | find /I "NoBan.exe" > nul
 if !errorlevel!==0 (
-    call :PrintGreen " ╠══════ Обход NoBan активен ══════╣ "
+    call :PrintGreen " "
+	call :PrintGreen " [+] Обход NoBan активен"
 	call :PrintGreen " "
 ) else (
-    call :PrintRed " ╠══════ Обход NoBan не активен ══════╣ "
+    call :PrintRed " "
+    call :PrintRed " [-] Обход NoBan не активен"
 	call :PrintRed " "
 )
 
@@ -182,13 +299,7 @@ set "AUTOLOAD_PATH=%~dp0autoload\"
 color C
 if not exist "!AUTOLOAD_PATH!" (
     echo.
-    echo ╠════════════ Ошибка ════════════╣
-    echo.
-    echo    Папка "autoload" не найдена!
-    echo.
-    echo ╠════════════ Ошибка ════════════╣
-    echo.
-    echo.
+    echo  [-] Папка "autoload" не найдена!
     echo.
     pause
     goto menu
@@ -198,13 +309,7 @@ if not exist "!AUTOLOAD_PATH!" (
 :: Если в папке autoload нет .bat файлов
 if !count!==0 (
     echo.
-    echo ╠════════════ Ошибка ════════════╣
-    echo.
-    echo В папке "autoload" не найдено ни одного .bat-файла!
-    echo.
-    echo ╠════════════ Ошибка ════════════╣
-    echo.
-    echo.
+    echo  [-] В папке "autoload" не найдено ни одного .bat-файла!
     echo.
     pause
     goto menu
@@ -639,13 +744,13 @@ if /i "!CHOICE!"=="Y" (
             if !errorlevel!==0 (
                 call :PrintGreen "[+] Успешно удалено !dirPath!"
             ) else (
+    )
+)
                 call :PrintRed "[-] Не удалось удалить !dirPath!"
             )
         ) else (
             call :PrintRed "[-] !dirPath! не существует"
         )
-    )
-)
 echo:
 
 pause
@@ -675,11 +780,11 @@ cls
 if not exist "%gameFlagFile%" (
     echo Включение игрового фильтра...
     echo ENABLED > "%gameFlagFile%"
-    call :PrintYellow "Перезапустите NoBan, чтобы изменения вступили в силу."
+    call :PrintYellow " [i] Перезапустите NoBan, чтобы изменения вступили в силу."
 ) else (
     echo Отключение игрового фильтра...
     del /f /q "%gameFlagFile%"
-    call :PrintYellow "Перезапустите NoBan, чтобы изменения вступили в силу."
+    call :PrintYellow " [i] Перезапустите NoBan, чтобы изменения вступили в силу."
 )
 
 pause
@@ -775,6 +880,420 @@ if exist "%SystemRoot%\System32\curl.exe" (
 
 echo Finished
 
+pause
+goto menu
+
+:: ═════╣ Проверка доменов через профиль или без профиля ╠═════
+:service_check_domains
+cls
+setlocal enabledelayedexpansion
+
+set "PROFILES_DIR=%~dp0checks\bat"
+
+:: Собираем список профилей
+set "profile_count=0"
+if exist "%PROFILES_DIR%" (
+    for %%f in ("%PROFILES_DIR%\*.bat") do (
+        set /a profile_count+=1
+        set "profile_name_!profile_count!=%%~nxf"
+        set "profile_path_!profile_count!=%%f"
+    )
+)
+
+echo.
+echo  ╠══════ Доступные профиля ══════╣
+echo.
+if %profile_count%==0 (
+    echo   (нет профилей в папке checks\bat)
+) else (
+    for /l %%i in (1,1,%profile_count%) do (
+        echo   [%%i] !profile_name_%%i!
+    )
+)
+echo   [0] Без профиля (проверка без обхода)
+echo.
+echo  ╠════════════ NoBan ════════════╣
+echo.
+set /p "profile_choice=[?] Выберите профиль [0-%profile_count%]: "
+if "%profile_choice%"=="0" goto check_without_profile
+if %profile_choice% gtr %profile_count% goto service_check_domains
+if %profile_choice% lss 0 goto service_check_domains
+
+set "selected_profile=!profile_name_%profile_choice%!"
+set "profile_path=!profile_path_%profile_choice%!"
+echo.
+echo  [i] Выбран профиль: %selected_profile%
+echo.
+
+:: Останавливаем текущий обход
+tasklist /FI "IMAGENAME eq NoBan.exe" 2>nul | find /I "NoBan.exe" >nul
+if not errorlevel 1 (
+    call :PrintYellow " "
+    call :PrintYellow " [i] Останавливаю текущий обход..."
+    call :PrintYellow " "
+    taskkill /IM NoBan.exe /F >nul 2>&1
+    timeout /t 2 /nobreak >nul
+)
+
+:: Запускаем выбранный профиль
+echo Запуск профиля %selected_profile%...
+pushd "%~dp0"
+start "NoBan Test" /min cmd /c "!profile_path!"
+popd
+timeout /t 5 /nobreak >nul
+set "PROFILE_ACTIVE=1"
+goto select_domain_file
+
+:check_without_profile
+set "PROFILE_ACTIVE=0"
+echo.
+call :PrintYellow " "
+call :PrintYellow " [i] Проверка без обхода (чистая доступность сайтов)"
+call :PrintYellow " "
+goto select_domain_file
+
+:select_domain_file
+:: Выбор файла с доменами
+set "CHECKS_DIR=%~dp0checks"
+if not exist "%CHECKS_DIR%" (
+    call :PrintRed " [-] Папка 'checks' не найдена."
+    if %PROFILE_ACTIVE%==1 taskkill /IM NoBan.exe /F >nul 2>&1
+    pause
+    goto menu
+)
+
+set "file_count=0"
+for %%f in ("%CHECKS_DIR%\*.txt") do (
+    set /a file_count+=1
+    set "file_name_!file_count!=%%~nxf"
+    set "file_path_!file_count!=%%f"
+)
+
+if %file_count%==0 (
+    call :PrintRed " [-] В папке 'checks' нет файлов со списками доменов."
+    if %PROFILE_ACTIVE%==1 taskkill /IM NoBan.exe /F >nul 2>&1
+    pause
+    goto menu
+)
+
+echo.
+echo  ╠═══════ Доступные файлы ═══════╣
+echo.
+for /l %%i in (1,1,%file_count%) do (
+    echo     [%%i] !file_name_%%i!
+)
+echo     [0] Выход
+echo.
+echo  ╠════════════ NoBan ════════════╣
+echo.
+set /p "file_choice=[?] Выберите файл [0-%file_count%]: "
+if "%file_choice%"=="0" (
+    if %PROFILE_ACTIVE%==1 taskkill /IM NoBan.exe /F >nul 2>&1
+    goto menu
+)
+if %file_choice% gtr %file_count% goto select_domain_file
+
+set "selected_file=!file_path_%file_choice%!"
+set "selected_name=!file_name_%file_choice%!"
+echo.
+echo  [i] Выбран файл доменов: %selected_name%
+echo.
+
+:: Проверка доменов
+echo.
+echo  [i] Проверка доменов...
+echo.
+
+set "SUCCESS=0"
+set "FAILED=0"
+set "result_file=%temp%\noban_domains_%random%.txt"
+echo Домен;Статус > "%result_file%"
+
+for /f "usebackq delims=" %%d in ("%selected_file%") do (
+    set "domain=%%d"
+    for /f "tokens=*" %%a in ("!domain!") do set "domain=%%a"
+    if defined domain if not "!domain:~0,1!"=="#" (
+        set "status=НЕДОСТУПЕН"
+        curl -s -L -m 10 -o "%temp%\noban_domain_check.html" "https://!domain!" >nul 2>&1
+        if not errorlevel 1 (
+            findstr /i "." "%temp%\noban_domain_check.html" >nul
+            if not errorlevel 1 set "status=ДОСТУПЕН"
+        )
+        del "%temp%\noban_domain_check.html" 2>nul
+        echo !domain! - !status!
+        echo !domain!;!status! >> "%result_file%"
+        if "!status!"=="ДОСТУПЕН" (set /a SUCCESS+=1) else (set /a FAILED+=1)
+    )
+)
+
+:: Останавливаем профиль, если он был запущен
+if %PROFILE_ACTIVE%==1 (
+    taskkill /IM NoBan.exe /F >nul 2>&1
+    call :PrintGreen " [+] Профиль остановлен."
+)
+
+echo.
+echo  ╠═════════════ Результат ═════════════╣
+echo.
+echo   Доступно: %SUCCESS%  Недоступно: %FAILED%
+echo.
+echo  ╠═════════════ Результат ═════════════╣
+echo.
+pause
+goto menu
+
+:: ═════╣ Профессиональная разблокировка (подменю) ╠═════
+:professional_unlock
+cls
+echo.
+echo  ╠════════════ Выберите ════════════╣
+echo.
+echo   [1] Spotify
+echo   [2] IntelliJ IDEA (JetBrains)
+echo   [3] Telegram Web
+echo   [0] Назад
+echo.
+echo  ╠════════════ Выберите ════════════╣
+echo.
+set /p "unlock_choice=Введите выбор [0-3]: "
+if "%unlock_choice%"=="1" goto spotify_unlock_manual
+if "%unlock_choice%"=="2" goto intellij_unlock_manual
+if "%unlock_choice%"=="3" goto telegram_unlock_manual
+if "%unlock_choice%"=="0" goto menu
+
+:: ═════╣ Spotify — ручная разблокировка через hosts ╠═════
+:spotify_unlock_manual
+cls
+
+:: 1. Создаём/открываем файл с правилами
+set "SPOTIFY_HOSTS_RULES=%~dp0checks\rest\spotify-hosts.txt"
+if not exist "%SPOTIFY_HOSTS_RULES%" (
+    call :PrintYellow " [i] Файл с правилами не найден. Создаю стандартный..."
+    (
+        echo # Spotify bypass IPs
+        echo 45.155.204.190 accounts.spotify.com
+        echo 45.155.204.190 aet.spotify.com
+        echo 45.155.204.190 api-partner.spotify.com
+        echo 45.155.204.190 api.spotify.com
+        echo 45.155.204.190 gew1-dealer.spotify.com
+        echo 45.155.204.190 gew1-spclient.spotify.com
+        echo 45.155.204.190 login5.spotify.com
+        echo 45.155.204.190 open.spotify.com
+        echo 45.155.204.190 spclient.wg.spotify.com
+        echo 45.155.204.190 www.spotify.com
+        echo 95.182.120.241 accounts.spotify.com
+        echo 95.182.120.241 aet.spotify.com
+        echo 95.182.120.241 api-partner.spotify.com
+        echo 95.182.120.241 api.spotify.com
+        echo 95.182.120.241 gew1-dealer.spotify.com
+        echo 95.182.120.241 gew1-spclient.spotify.com
+        echo 95.182.120.241 login5.spotify.com
+        echo 95.182.120.241 open.spotify.com
+        echo 95.182.120.241 spclient.wg.spotify.com
+        echo 95.182.120.241 www.spotify.com
+        echo # Spotify CDN
+        echo 45.155.204.190 open-exp.spotifycdn.com
+        echo 95.182.120.241 audio-fa-tls13.spotifycdn.com
+        echo 95.182.120.241 concerts.spotifycdn.com
+        echo 95.182.120.241 heads-fa-tls13.spotifycdn.com
+        echo 95.182.120.241 image-cdn-fa.spotifycdn.com
+        echo 95.182.120.241 mrkt.spotifycdn.com
+        echo 95.182.120.241 open-exp.spotifycdn.com
+        echo 95.182.120.241 pickasso.spotifycdn.com
+        echo 95.182.120.241 podz-content.spotifycdn.com
+        echo 95.182.120.241 seed-mix-image.spotifycdn.com
+        echo 95.182.120.241 spotifycdn.com
+        echo 95.182.120.241 spotifycdn.net
+        echo 95.182.120.241 thisis-images.spotifycdn.com
+        echo 95.182.120.241 wap.spotifycdn.com
+        echo 95.182.120.241 web-sdk-assets.spotifycdn.com
+    ) > "%SPOTIFY_HOSTS_RULES%"
+    call :PrintGreen " [+] Файл создан: %SPOTIFY_HOSTS_RULES%"
+)
+
+:: 2. Открываем файл с правилами в блокноте
+call :PrintYellow " [i] Открываю файл для копирования..."
+start notepad.exe "%SPOTIFY_HOSTS_RULES%"
+timeout /t 2 >nul
+
+:: 3. Открываем папку etc
+call :PrintYellow " [i] Открываю папку %SystemRoot%\System32\drivers\etc"
+start explorer "%SystemRoot%\System32\drivers\etc"
+
+:: 4. Инструкция
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+echo    1. Скопируйте содержимое открытого блокнота
+echo    2. В папке etc найдите файл 'hosts'
+echo    3. Откройте его через блокнот
+echo    4. Вставьте скопированные строки в файл hosts
+echo    5. Сохраните файл (Ctrl+S). Подтвердите
+echo    6. Закройте блокнот и проводник
+echo    7. Рекомендуем 'Выполнить сброс DNS'
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+set /p "flush=Выполнить сброс DNS сейчас? (Да/Нет): "
+if /i "%flush%"=="да" (
+    ipconfig /flushdns >nul
+    call :PrintGreen " "
+    call :PrintYellow " [i] Удаляем..."
+    call :PrintYellow " [i] Кушаем печеньки..."
+    call :PrintYellow " [i] Ещё чуть чуть..."
+    call :PrintGreen " [+] DNS-кэш сброшен "
+    call :PrintGreen " "
+) else (
+    call :PrintRed " "
+    call :PrintRed " [-] Сброс DNS отменён "
+    call :PrintRed " "
+)
+pause
+goto menu
+
+:: ═════╣ IntelliJ IDEA — ручная разблокировка через hosts ╠═════
+:intellij_unlock_manual
+cls
+
+set "RULES_FILE=%~dp0checks\rest\intellij-hosts.txt"
+set "HOSTS_DIR=%SystemRoot%\System32\drivers\etc"
+
+:: Проверяем, существует ли папка rest
+if not exist "%~dp0checks\rest" (
+    call :PrintYellow " [i] Папка checks\rest не найдена. Создаю..."
+    mkdir "%~dp0checks\rest"
+)
+
+:: Создаём файл с правилами, если его нет
+if not exist "%RULES_FILE%" (
+    call :PrintYellow " [i] Файл intellij-hosts.txt не найден. Создаю..."
+    (
+        echo # IntelliJ IDEA / JetBrains bypass IPs
+        echo 45.155.204.190 datalore.jetbrains.com
+        echo 45.155.204.190 plugins.jetbrains.com
+        echo 45.155.204.190 download.jetbrains.com
+        echo 45.155.204.190 api.jetbrains.ai
+        echo 45.155.204.190 account.jetbrains.com
+    ) > "%RULES_FILE%"
+    call :PrintGreen " [+] Файл создан: %RULES_FILE%"
+)
+
+:: Открываем файл с правилами в блокноте
+call :PrintYellow " [i] Открываю файл для копирования..."
+start notepad.exe "%RULES_FILE%"
+timeout /t 2 >nul
+
+:: Открываем папку etc
+call :PrintYellow " [i] Открываю папку %HOSTS_DIR%"
+start explorer "%HOSTS_DIR%"
+
+:: Инструкция
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+echo    1. Скопируйте содержимое открытого блокнота
+echo    2. В папке etc найдите файл 'hosts'
+echo    3. Откройте его через блокнот
+echo    4. Вставьте скопированные строки в файл hosts
+echo    5. Сохраните файл (Ctrl+S). Подтвердите
+echo    6. Закройте блокнот и проводник
+echo    7. Рекомендуем 'Выполнить сброс DNS'
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+set /p "flush=Выполнить сброс DNS сейчас? (Да/Нет): "
+if /i "%flush%"=="да" (
+    ipconfig /flushdns >nul
+    call :PrintGreen " "
+    call :PrintYellow " [i] Удаляем..."
+    call :PrintYellow " [i] Кушаем печеньки..."
+    call :PrintYellow " [i] Ещё чуть чуть..."
+    call :PrintGreen " [+] DNS-кэш сброшен "
+    call :PrintGreen " "
+) else (
+    call :PrintRed " "
+    call :PrintRed " [-] Сброс DNS отменён "
+    call :PrintRed " "
+)
+pause
+goto menu
+
+:: ═════╣ Telegram Web — ручная разблокировка через hosts ╠═════
+:telegram_unlock_manual
+cls
+
+set "RULES_FILE=%~dp0checks\rest\telegram-hosts.txt"
+set "HOSTS_DIR=%SystemRoot%\System32\drivers\etc"
+
+if not exist "%~dp0checks\rest" mkdir "%~dp0checks\rest"
+
+if not exist "%RULES_FILE%" (
+    call :PrintYellow " [i] Файл telegram-hosts.txt не найден. Создаю..."
+    (
+        echo # Telegram Web bypass IPs
+        echo 149.154.167.220 zws4.web.telegram.org
+        echo 149.154.167.220 vesta.web.telegram.org
+        echo 149.154.167.220 vesta-1.web.telegram.org
+        echo 149.154.167.220 venus-1.web.telegram.org
+        echo 149.154.167.220 telegram.me
+        echo 149.154.167.220 telegram.dog
+        echo 149.154.167.220 telegram.space
+        echo 149.154.167.220 telesco.pe
+        echo 149.154.167.220 tg.dev
+        echo 149.154.167.220 telegram.org
+        echo 149.154.167.220 t.me
+        echo 149.154.167.220 api.telegram.org
+        echo 149.154.167.220 td.telegram.org
+        echo 149.154.167.220 venus.web.telegram.org
+        echo 149.154.167.220 web.telegram.org
+        echo 149.154.167.220 kws2-1.web.telegram.org
+        echo 149.154.167.220 kws2.web.telegram.org
+        echo 149.154.167.220 kws4-1.web.telegram.org
+        echo 149.154.167.220 kws4.web.telegram.org
+        echo 149.154.167.220 zws2-1.web.telegram.org
+        echo 149.154.167.220 zws2.web.telegram.org
+        echo 149.154.167.220 zws4-1.web.telegram.org
+    ) > "%RULES_FILE%"
+    call :PrintGreen " [+] Файл создан: %RULES_FILE%"
+)
+
+:: Открываем файл с правилами в блокноте
+call :PrintYellow " [i] Открываю файл для копирования..."
+start notepad.exe "%RULES_FILE%"
+timeout /t 2 >nul
+
+:: Открываем папку etc
+call :PrintYellow " [i] Открываю папку %HOSTS_DIR%"
+start explorer "%HOSTS_DIR%"
+
+:: Инструкция
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+echo    1. Скопируйте содержимое открытого блокнота
+echo    2. В папке etc найдите файл 'hosts'
+echo    3. Откройте его через блокнот
+echo    4. Вставьте скопированные строки в файл hosts
+echo    5. Сохраните файл (Ctrl+S). Подтвердите
+echo    6. Закройте блокнот и проводник
+echo    7. Рекомендуем 'Выполнить сброс DNS'
+echo.
+echo  ╠════════════════════ Инструкция ════════════════════╣
+echo.
+set /p "flush=Выполнить сброс DNS сейчас? (Да/Нет): "
+if /i "%flush%"=="да" (
+    ipconfig /flushdns >nul
+    call :PrintGreen " "
+    call :PrintYellow " [i] Удаляем..."
+    call :PrintYellow " [i] Кушаем печеньки..."
+    call :PrintYellow " [i] Ещё чуть чуть..."
+    call :PrintGreen " [+] DNS-кэш сброшен "
+    call :PrintGreen " "
+) else (
+    call :PrintRed " "
+    call :PrintRed " [-] Сброс DNS отменён "
+    call :PrintRed " "
+)
 pause
 goto menu
 
