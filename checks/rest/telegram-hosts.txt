@@ -1,0 +1,23 @@
+# Telegram Web bypass IPs
+149.154.167.220 zws4.web.telegram.org
+149.154.167.220 vesta.web.telegram.org
+149.154.167.220 vesta-1.web.telegram.org
+149.154.167.220 venus-1.web.telegram.org
+149.154.167.220 telegram.me
+149.154.167.220 telegram.dog
+149.154.167.220 telegram.space
+149.154.167.220 telesco.pe
+149.154.167.220 tg.dev
+149.154.167.220 telegram.org
+149.154.167.220 t.me
+api.telegram.org
+td.telegram.org
+venus.web.telegram.org
+web.telegram.org
+kws2-1.web.telegram.org
+kws2.web.telegram.org
+kws4-1.web.telegram.org
+kws4.web.telegram.org
+zws2-1.web.telegram.org
+zws2.web.telegram.org
+zws4-1.web.telegram.org
